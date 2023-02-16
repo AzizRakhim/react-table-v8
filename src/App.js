@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 
 import "./App.css";
 import Box from "@mui/material/Box";
@@ -22,7 +22,9 @@ import {
   getSortedRowModel,
   flexRender,
 } from "@tanstack/react-table";
-import { useCSVReader } from "react-papaparse";
+import { useCSVReader, usePapaParse } from "react-papaparse";
+import Papa from "papaparse";
+import chargeSample from "./files/students.csv";
 
 import TablePaginationActions from "./actions";
 
@@ -250,6 +252,18 @@ function App() {
     onRowSelectionChange: setRowSelection,
   });
 
+  const { readRemoteFile } = usePapaParse();
+
+  const handleReadRemoteFile = () => {
+    readRemoteFile("./files/students.csv", {
+      complete: (results) => {
+        console.log("---------------------------");
+        console.log("Results:", results);
+        console.log("---------------------------");
+      },
+    });
+  };
+
   const { pageSize, pageIndex } = table.getState().pagination;
 
   React.useEffect(() => {
@@ -290,13 +304,15 @@ function App() {
               setTableData(tempData);
             }}
           >
-            {({ getRootProps, acceptedFile }) => (
+            {({ getRootProps }) => (
               <div style={{ position: "relative" }}>
                 <div className="btn-container">
                   <button type="button" {...getRootProps()} className="button">
                     Browse file
                   </button>
-                  <div>{acceptedFile && acceptedFile.name}</div>
+                  <a href={chargeSample} download className="button">
+                    Ready file
+                  </a>
                 </div>
                 <span
                   style={{
