@@ -8,9 +8,8 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import TablePagination from "@mui/material/TablePagination";
-import InputBase from "@mui/material/InputBase";
 import Paper from "@mui/material/Paper";
+import TablePagination from "@mui/material/TablePagination";
 
 import {
   useReactTable,
@@ -20,42 +19,12 @@ import {
   getFacetedUniqueValues,
   getFacetedMinMaxValues,
   getPaginationRowModel,
-  sortingFns,
   getSortedRowModel,
   flexRender,
 } from "@tanstack/react-table";
+import { useCSVReader } from "react-papaparse";
 
-import { rankItem, compareItems } from "@tanstack/match-sorter-utils";
-
-import { makeData } from "./makeData";
-
-const fuzzyFilter = (row, columnId, value, addMeta) => {
-  // Rank the item
-  const itemRank = rankItem(row.getValue(columnId), value);
-
-  // Store the itemRank info
-  addMeta({
-    itemRank,
-  });
-
-  // Return if the item should be filtered in/out
-  return itemRank.passed;
-};
-
-const fuzzySort = (rowA, rowB, columnId) => {
-  let dir = 0;
-
-  // Only sort by rank if the column has ranking information
-  if (rowA.columnFiltersMeta[columnId]) {
-    dir = compareItems(
-      rowA.columnFiltersMeta[columnId]?.itemRank,
-      rowB.columnFiltersMeta[columnId]?.itemRank
-    );
-  }
-
-  // Provide an alphanumeric fallback for when the item ranks are equal
-  return dir === 0 ? sortingFns.alphanumeric(rowA, rowB, columnId) : dir;
-};
+import TablePaginationActions from "./actions";
 
 function DebouncedInput({
   value: initialValue,
@@ -78,11 +47,12 @@ function DebouncedInput({
   }, [value]);
 
   return (
-    <div className="flex justify-center my-2">
+    <div className="flex justify-center">
       <input
         {...props}
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        className="w-full border-1 px-2"
       />
     </div>
   );
@@ -142,8 +112,8 @@ function Filter({ column, table }) {
   ) : (
     <>
       <datalist id={column.id + "list"}>
-        {sortedUniqueValues.slice(0, 5000).map((value) => (
-          <option value={value} key={value} />
+        {sortedUniqueValues.slice(0, 5000).map((value, i) => (
+          <option value={value} key={value + i} />
         ))}
       </datalist>
       <DebouncedInput
@@ -183,6 +153,9 @@ function App() {
   const [columnFilters, setColumnFilters] = React.useState([]);
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState("");
+  const [tableData, setTableData] = React.useState([]);
+
+  const { CSVReader } = useCSVReader();
 
   const columns = React.useMemo(
     () => [
@@ -198,7 +171,7 @@ function App() {
           />
         ),
         cell: ({ row }) => (
-          <div className="px-1">
+          <div className="px-1 text-center flex items-center justify-center">
             <IndeterminateCheckbox
               {...{
                 checked: row.getIsSelected(),
@@ -211,76 +184,51 @@ function App() {
         ),
       },
       {
-        header: "Name",
-        footer: (props) => props.column.id,
-        columns: [
-          {
-            accessorKey: "firstName",
-            cell: (info) => info.getValue(),
-            footer: (props) => props.column.id,
-          },
-          {
-            accessorFn: (row) => row.lastName,
-            id: "lastName",
-            cell: (info) => info.getValue(),
-            header: () => <span>Last Name</span>,
-            footer: (props) => props.column.id,
-          },
-          {
-            accessorFn: (row) => `${row.firstName} ${row.lastName}`,
-            id: "fullName",
-            header: "Full Name",
-            cell: (info) => info.getValue(),
-            footer: (props) => props.column.id,
-            filterFn: "fuzzy",
-            sortingFn: fuzzySort,
-          },
-        ],
+        accessorKey: "extID",
+        header: () => <span>Ext id</span>,
+        cell: (info) => (
+          <span className="text-center t-cell">{info.getValue()}</span>
+        ),
       },
       {
-        header: "Info",
-        footer: (props) => props.column.id,
-        columns: [
-          {
-            accessorKey: "age",
-            header: () => "Age",
-            footer: (props) => props.column.id,
-          },
-          {
-            header: "More Info",
-            columns: [
-              {
-                accessorKey: "visits",
-                header: () => <span>Visits</span>,
-                footer: (props) => props.column.id,
-              },
-              {
-                accessorKey: "status",
-                header: "Status",
-                footer: (props) => props.column.id,
-              },
-              {
-                accessorKey: "progress",
-                header: "Profile Progress",
-                footer: (props) => props.column.id,
-              },
-            ],
-          },
-        ],
+        accessorKey: "class",
+        header: () => <span>Class</span>,
+        cell: (info) => (
+          <span className="text-center t-cell">{info.getValue()}</span>
+        ),
+      },
+      {
+        accessorKey: "fullname",
+        header: () => <span>Full name</span>,
+      },
+      {
+        accessorKey: "group",
+        header: () => <span>Group</span>,
+        cell: (info) => (
+          <span className="text-center t-cell">{info.getValue()}</span>
+        ),
+      },
+      {
+        accessorKey: "group-2",
+        header: () => <span>Group 2</span>,
+        cell: (info) => (
+          <span className="text-center t-cell">{info.getValue()}</span>
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: () => <span>Status</span>,
+        cell: (info) => (
+          <span className="text-center t-cell">{info.getValue()}</span>
+        ),
       },
     ],
     []
   );
 
-  const [data, setData] = React.useState(() => makeData(50000));
-  const refreshData = () => setData((old) => makeData(50000));
-
   const table = useReactTable({
-    data,
+    data: tableData,
     columns,
-    filterFns: {
-      fuzzy: fuzzyFilter,
-    },
     state: {
       columnFilters,
       globalFilter,
@@ -288,7 +236,6 @@ function App() {
     },
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
-    globalFilterFn: fuzzyFilter,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -302,6 +249,8 @@ function App() {
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
   });
+
+  const { pageSize, pageIndex } = table.getState().pagination;
 
   React.useEffect(() => {
     if (table.getState().columnFilters[0]?.id === "fullName") {
@@ -324,166 +273,170 @@ function App() {
           </div>
         </div>
         <div>
-          <DebouncedInput
-            value={globalFilter ?? ""}
-            onChange={(value) => setGlobalFilter(String(value))}
-            className="p-2 font-lg shadow text-center border border-block"
-            placeholder="Search all columns..."
-          />
-        </div>
-        <div className="h-2" />
-        <Box sx={{ width: "100%" }}>
-          <TableContainer component={Paper}>
-            <Table sx={{ minWidth: 650 }} aria-label="simple table">
-              <TableHead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableCell key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder ? null : (
-                            <>
-                              <div
-                                {...{
-                                  className: header.column.getCanSort()
-                                    ? "cursor-pointer select-none"
-                                    : "",
-                                  onClick:
-                                    header.column.getToggleSortingHandler(),
-                                }}
-                              >
-                                {flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                                {{
-                                  asc: " 🔼",
-                                  desc: " 🔽",
-                                }[header.column.getIsSorted()] ?? null}
-                              </div>
-                              {header.column.getCanFilter() ? (
-                                <div>
-                                  <Filter
-                                    column={header.column}
-                                    table={table}
-                                  />
-                                </div>
-                              ) : null}
-                            </>
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHead>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => {
-                  return (
-                    <TableRow key={row.id}>
-                      {row.getVisibleCells().map((cell) => {
-                        return (
-                          <TableCell key={cell.id}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-              <tfoot>
-                <tr>
-                  <td className="p-1">
-                    <IndeterminateCheckbox
-                      {...{
-                        checked: table.getIsAllPageRowsSelected(),
-                        indeterminate: table.getIsSomePageRowsSelected(),
-                        onChange: table.getToggleAllPageRowsSelectedHandler(),
-                      }}
-                    />
-                  </td>
-                  <td colSpan={20}>
-                    Page Rows ({table.getRowModel().rows.length})
-                  </td>
-                </tr>
-              </tfoot>
-            </Table>
-          </TableContainer>
-        </Box>
-        <div className="h-2" />
-        <div className="flex items-center gap-2">
-          <button
-            className="border rounded p-1"
-            onClick={() => table.setPageIndex(0)}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<<"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            {"<"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            {">"}
-          </button>
-          <button
-            className="border rounded p-1"
-            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage()}
-          >
-            {">>"}
-          </button>
-          <span className="flex items-center gap-1">
-            <div>Page</div>
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </strong>
-          </span>
-          <span className="flex items-center gap-1">
-            | Go to page:
-            <input
-              type="number"
-              defaultValue={table.getState().pagination.pageIndex + 1}
-              onChange={(e) => {
-                const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                table.setPageIndex(page);
-              }}
-              className="border p-1 rounded w-16"
-            />
-          </span>
-          <select
-            value={table.getState().pagination.pageSize}
-            onChange={(e) => {
-              table.setPageSize(Number(e.target.value));
+          <CSVReader
+            onUploadAccepted={(results) => {
+              const notFirstData = results.data.filter((_, i) => i !== 0);
+
+              const header = results.data[0];
+
+              const tempData = notFirstData.map((data) => {
+                const categoryPosts = data.reduce((acc, post, i) => {
+                  return { ...acc, [header[i]]: post };
+                }, {});
+
+                return categoryPosts;
+              });
+
+              setTableData(tempData);
             }}
           >
-            {[10, 20, 30, 40, 50].map((pageSize) => (
-              <option key={pageSize} value={pageSize}>
-                Show {pageSize}
-              </option>
-            ))}
-          </select>
+            {({ getRootProps, acceptedFile }) => (
+              <div style={{ position: "relative" }}>
+                <div className="btn-container">
+                  <button type="button" {...getRootProps()} className="button">
+                    Browse file
+                  </button>
+                  <div>{acceptedFile && acceptedFile.name}</div>
+                </div>
+                <span
+                  style={{
+                    background: "#000",
+                    height: "2px",
+                    width: "100%",
+                    display: "block",
+                    marginTop: "5px",
+                    marginBottom: "5px",
+                  }}
+                />
+              </div>
+            )}
+          </CSVReader>
         </div>
-        <div>{table.getPrePaginationRowModel().rows.length} Rows</div>
-        <div>
-          <button onClick={() => rerender()}>Force Rerender</button>
-        </div>
-        <div>
-          <button onClick={() => refreshData()}>Refresh Data</button>
-        </div>
-        <pre>{JSON.stringify(table.getState(), null, 2)}</pre>
+        {tableData.length ? (
+          <>
+            <div>
+              <DebouncedInput
+                value={globalFilter ?? ""}
+                onChange={(value) => setGlobalFilter(String(value))}
+                className="p-2 font-lg shadow border border-block"
+                placeholder="Search all columns..."
+              />
+            </div>
+            <div className="h-2" />
+            <Box sx={{ width: "100%" }}>
+              <TableContainer component={Paper}>
+                <Table sx={{ minWidth: 650 }} aria-label="simple table">
+                  <TableHead>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => {
+                          return (
+                            <TableCell key={header.id} colSpan={header.colSpan}>
+                              {header.isPlaceholder ? null : (
+                                <>
+                                  <div
+                                    {...{
+                                      className: header.column.getCanSort()
+                                        ? "cursor-pointer select-none"
+                                        : "",
+                                      onClick:
+                                        header.column.getToggleSortingHandler(),
+                                    }}
+                                  >
+                                    {flexRender(
+                                      header.column.columnDef.header,
+                                      header.getContext()
+                                    )}
+                                    {{
+                                      asc: " 🔼",
+                                      desc: " 🔽",
+                                    }[header.column.getIsSorted()] ?? null}
+                                  </div>
+                                  {header.column.getCanFilter() ? (
+                                    <div>
+                                      <Filter
+                                        column={header.column}
+                                        table={table}
+                                      />
+                                    </div>
+                                  ) : null}
+                                </>
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))}
+                  </TableHead>
+                  <TableBody>
+                    {table.getRowModel().rows.map((row) => {
+                      return (
+                        <TableRow key={row.id}>
+                          {row.getVisibleCells().map((cell) => {
+                            return (
+                              <TableCell key={cell.id}>
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                  <tfoot>
+                    <tr>
+                      <td className="p-1 text-center">
+                        <IndeterminateCheckbox
+                          {...{
+                            checked: table.getIsAllPageRowsSelected(),
+                            indeterminate: table.getIsSomePageRowsSelected(),
+                            onChange:
+                              table.getToggleAllPageRowsSelectedHandler(),
+                          }}
+                        />
+                      </td>
+                      <td colSpan={20}>
+                        Page Rows ({table.getRowModel().rows.length})
+                      </td>
+                    </tr>
+                  </tfoot>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                rowsPerPageOptions={[
+                  5,
+                  10,
+                  25,
+                  { label: "All", value: tableData.length },
+                ]}
+                component="div"
+                count={table.getFilteredRowModel().rows.length}
+                rowsPerPage={pageSize}
+                page={pageIndex}
+                SelectProps={{
+                  inputProps: { "aria-label": "rows per page" },
+                  native: true,
+                }}
+                onPageChange={(_, page) => {
+                  table.setPageIndex(page);
+                }}
+                onRowsPerPageChange={(e) => {
+                  const size = e.target.value ? Number(e.target.value) : 10;
+                  table.setPageSize(size);
+                }}
+                ActionsComponent={TablePaginationActions}
+              />
+            </Box>
+            <div>{table.getPrePaginationRowModel().rows.length} Rows</div>
+            <div>
+              <button onClick={() => rerender()}>Force Rerender</button>
+            </div>
+            <pre>{JSON.stringify(table.getState(), null, 2)}</pre>
+          </>
+        ) : null}
       </div>
     </div>
   );

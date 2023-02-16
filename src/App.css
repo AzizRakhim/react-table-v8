@@ -15,9 +15,12 @@ th {
   border-bottom: 1px solid lightgray;
   border-right: 1px solid lightgray;
   padding: 2px 4px !important;
+  text-align: center !important;
 }
 
 td {
+  border-bottom: 1px solid lightgray;
+  border-right: 1px solid lightgray;
   padding: 2px 4px !important;
 }
 
@@ -39,4 +42,30 @@ tfoot th {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.button {
+  padding: 10px;
+  background: blue;
+  color: #fff;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: blue;
+  color: blue;
+  background-color: transparent;
+}
+
+.btn-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.t-cell {
+  display: block !important;
 }
